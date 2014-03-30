@@ -276,17 +276,26 @@ private:
         priorities_.push_back(priority);
         auto guard = make_scope_guard([this](){this->priorities_.pop_back();});
 
-        if(need_paren)
+        if (op == '^')
         {
-            (*this)('(');
+            (*this)("pow(");
+            this->helper(e, n-1);
+            (*this)(", ")(e.rest[n-1].operand_)(")");
         }
-
-        this->helper(e, n-1);
-        (*this)(op)(e.rest[n-1].operand_);
-
-        if(need_paren)
+        else
         {
-            (*this)(')');
+            if(need_paren)
+            {
+                (*this)('(');
+            }
+
+            this->helper(e, n-1);
+            (*this)(op)(e.rest[n-1].operand_);
+
+            if(need_paren)
+            {
+                (*this)(')');
+            }
         }
 
         return *this;
@@ -317,6 +326,7 @@ private:
         default:
             assert(false);
         }
+        return Never;
     }
 
     std::vector<Priority> priorities_;
