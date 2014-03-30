@@ -1,0 +1,1 @@
+fun(z) = \frac{1}{z-\gamma}+\frac{1}{\gamma}+\frac{z}{\gamma^{2}}

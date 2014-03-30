@@ -19,3 +19,5 @@
 *.exe
 *.out
 *.app
+tex2cpp.layout
+tex2cpp_build_log.html
