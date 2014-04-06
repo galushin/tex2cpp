@@ -5,3 +5,9 @@
 	<fstream>
 	<iostream>
 
+1396786452 source:c:\projects\tex2cpp\tex2cpp\main.cpp
+	<boost/spirit/include/qi.hpp>
+	<boost/fusion/include/adapt_struct.hpp>
+	<fstream>
+	<iostream>
+
