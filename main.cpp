@@ -137,12 +137,14 @@ struct calculator
                 ;
 
             term =
-                factor
-                >> *(   (char_('*') > factor)
-                    |   (char_('/') > factor)
-                    |   (char_('^') > factor)
+                subscript
+                >> *(   (char_('*') > subscript)
+                    |   (char_('/') > subscript)
+                    |   (char_('^') > subscript)
                     )
                 ;
+
+            subscript = factor >> *(char_('_') > factor);
 
             factor =
                     uint_
@@ -169,6 +171,7 @@ struct calculator
     qi::rule<Iterator, ast::formula(), ascii::space_type> formula;
     qi::rule<Iterator, ast::expression(), ascii::space_type> expression;
     qi::rule<Iterator, ast::expression(), ascii::space_type> term;
+    qi::rule<Iterator, ast::expression(), ascii::space_type> subscript;
     qi::rule<Iterator, ast::operand(), ascii::space_type> factor;
     qi::rule<Iterator, std::string(), ascii::space_type> id;
     qi::rule<Iterator, ast::expression(), ascii::space_type> expression_in_parens;
@@ -318,6 +321,11 @@ private:
             this->helper(e, n-1);
             (*this)(", ")(e.rest[n-1].operand_)(")");
         }
+        else if(op == '_')
+        {
+            this->helper(e, n-1);
+            (*this)('[')(e.rest[n-1].operand_)(']');
+        }
         else
         {
             if(need_paren)
@@ -339,6 +347,7 @@ private:
 
     enum Priority
     {
+        Subscript,
         Division,
         Mult,
         Additive,
@@ -359,7 +368,11 @@ private:
         case '-':
             return Additive;
 
+        case '_':
+            return Subscript;
+
         default:
+            std::cout << "Bad operator '" << op << "'\n";
             assert(false);
         }
         return Never;
