@@ -10,6 +10,7 @@ namespace ast
     struct expression;
     struct fraction;
     struct conjugated;
+    struct absolute;
 
     struct expression_in_parens;
 
@@ -21,6 +22,7 @@ namespace ast
           , boost::recursive_wrapper<expression>
           , boost::recursive_wrapper<fraction>
           , boost::recursive_wrapper<conjugated>
+          , boost::recursive_wrapper<absolute>
         >
     operand;
 
@@ -69,6 +71,11 @@ namespace ast
     {
         expression arg;
     };
+
+    struct absolute
+    {
+        expression arg;
+    };
 }
 // namespace ast
 
@@ -103,6 +110,7 @@ BOOST_FUSION_ADAPT_STRUCT(ast::fraction,
                           (ast::expression, denominator))
 
 BOOST_FUSION_ADAPT_STRUCT(ast::conjugated, (ast::expression, arg))
+BOOST_FUSION_ADAPT_STRUCT(ast::absolute, (ast::expression, arg))
 
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
@@ -140,18 +148,22 @@ struct calculator
                     uint_
                 |   fraction
                 |   conj
-                |   id
+                |   absolute
                 |   expression_in_parens
                 |   (char_('-') > factor)
                 |   (char_('+') > factor)
+                |   id
                 ;
 
             expression_in_parens
                 = ('(' > expression > ')')
-                | ('{' > expression > '}');
+                | ('{' > expression > '}')
+                | ("\\left(" > expression > "\\right)");
 
             fraction = ("\\frac{" > expression > "}{" > expression > "}");
             conj     = ("\\bar{") > expression > "}";
+            absolute = ('|' > expression > '|')
+                     | ("\\left|" > expression > "\\right|");
     }
 
     qi::rule<Iterator, ast::formula(), ascii::space_type> formula;
@@ -162,6 +174,7 @@ struct calculator
     qi::rule<Iterator, ast::expression(), ascii::space_type> expression_in_parens;
     qi::rule<Iterator, ast::fraction(), ascii::space_type> fraction;
     qi::rule<Iterator, ast::conjugated(), ascii::space_type> conj;
+    qi::rule<Iterator, ast::absolute(), ascii::space_type> absolute;
 };
 
 template <class F>
@@ -269,6 +282,11 @@ public:
     cpp_generator & operator()(ast::conjugated const & x)
     {
         return (*this)("conj(")(x.arg)(")");
+    }
+
+    cpp_generator & operator()(ast::absolute const & x)
+    {
+        return (*this)("abs(")(x.arg)(")");
     }
 
     template <class T>

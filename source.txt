@@ -1,2 +1,2 @@
-fun(z) = \bar{z}
+fun(z) = \left|\bar{z}\right|
 \frac{-\left(\bar{z}_{2}-\bar{\gamma}_{2}\right)}{\left(\left|z_{1}-\gamma_{1}\right|^{2}+\left|z_{2}-\gamma_{2}\right|^{2}\right)^{2}}
