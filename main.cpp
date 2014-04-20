@@ -9,6 +9,8 @@ namespace ast
     struct signed_;
     struct expression;
     struct fraction;
+    struct conjugated;
+    struct absolute;
 
     struct expression_in_parens;
 
@@ -19,6 +21,8 @@ namespace ast
           , boost::recursive_wrapper<signed_>
           , boost::recursive_wrapper<expression>
           , boost::recursive_wrapper<fraction>
+          , boost::recursive_wrapper<conjugated>
+          , boost::recursive_wrapper<absolute>
         >
     operand;
 
@@ -62,6 +66,16 @@ namespace ast
         expression numerator;
         expression denominator;
     };
+
+    struct conjugated
+    {
+        expression arg;
+    };
+
+    struct absolute
+    {
+        expression arg;
+    };
 }
 // namespace ast
 
@@ -95,6 +109,9 @@ BOOST_FUSION_ADAPT_STRUCT(ast::fraction,
                           (ast::expression, numerator)
                           (ast::expression, denominator))
 
+BOOST_FUSION_ADAPT_STRUCT(ast::conjugated, (ast::expression, arg))
+BOOST_FUSION_ADAPT_STRUCT(ast::absolute, (ast::expression, arg))
+
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
 
@@ -109,6 +126,7 @@ struct calculator
         id = +qi::alpha | ('\\' > + qi::alpha);
 
         using qi::char_;
+        using qi::lit;
         using qi::uint_;
 
         expression =
@@ -119,36 +137,47 @@ struct calculator
                 ;
 
             term =
-                factor
-                >> *(   (char_('*') > factor)
-                    |   (char_('/') > factor)
-                    |   (char_('^') > factor)
+                subscript
+                >> *(   (char_('*') > subscript)
+                    |   (char_('/') > subscript)
+                    |   (char_('^') > subscript)
                     )
                 ;
+
+            subscript = factor >> *(char_('_') > factor);
 
             factor =
                     uint_
                 |   fraction
-                |   id
+                |   conj
+                |   absolute
                 |   expression_in_parens
                 |   (char_('-') > factor)
                 |   (char_('+') > factor)
+                |   id
                 ;
 
             expression_in_parens
                 = ('(' > expression > ')')
-                | ('{' > expression > '}');
+                | ('{' > expression > '}')
+                | ("\\left(" > expression > "\\right)");
 
             fraction = ("\\frac{" > expression > "}{" > expression > "}");
+            conj     = ("\\bar{") > expression > "}";
+            absolute = ('|' > expression > '|')
+                     | ("\\left|" > expression > "\\right|");
     }
 
     qi::rule<Iterator, ast::formula(), ascii::space_type> formula;
     qi::rule<Iterator, ast::expression(), ascii::space_type> expression;
     qi::rule<Iterator, ast::expression(), ascii::space_type> term;
+    qi::rule<Iterator, ast::expression(), ascii::space_type> subscript;
     qi::rule<Iterator, ast::operand(), ascii::space_type> factor;
     qi::rule<Iterator, std::string(), ascii::space_type> id;
     qi::rule<Iterator, ast::expression(), ascii::space_type> expression_in_parens;
     qi::rule<Iterator, ast::fraction(), ascii::space_type> fraction;
+    qi::rule<Iterator, ast::conjugated(), ascii::space_type> conj;
+    qi::rule<Iterator, ast::absolute(), ascii::space_type> absolute;
 };
 
 template <class F>
@@ -192,19 +221,19 @@ public:
 
     cpp_generator & operator()(ast::formula formula)
     {
-        (*this)("double ")(formula.function_name)("(");
+        (*this)("template <class T>\n")("T ")(formula.function_name)("(");
 
         auto first = formula.args.begin();
         auto last = formula.args.end();
 
         if(first != last)
         {
-            (*this)(*first);
+            (*this)("T ")(*first);
             ++ first;
 
             for(; first != last; ++ first)
             {
-                (*this)(", ")(*first);
+                (*this)(", ")("T ")(*first);
             }
         }
 
@@ -253,6 +282,16 @@ public:
         return *this;
     }
 
+    cpp_generator & operator()(ast::conjugated const & x)
+    {
+        return (*this)("conj(")(x.arg)(")");
+    }
+
+    cpp_generator & operator()(ast::absolute const & x)
+    {
+        return (*this)("abs(")(x.arg)(")");
+    }
+
     template <class T>
     cpp_generator & operator()(T const & x)
     {
@@ -282,6 +321,11 @@ private:
             this->helper(e, n-1);
             (*this)(", ")(e.rest[n-1].operand_)(")");
         }
+        else if(op == '_')
+        {
+            this->helper(e, n-1);
+            (*this)('[')(e.rest[n-1].operand_)(']');
+        }
         else
         {
             if(need_paren)
@@ -303,6 +347,7 @@ private:
 
     enum Priority
     {
+        Subscript,
         Division,
         Mult,
         Additive,
@@ -323,7 +368,11 @@ private:
         case '-':
             return Additive;
 
+        case '_':
+            return Subscript;
+
         default:
+            std::cout << "Bad operator '" << op << "'\n";
             assert(false);
         }
         return Never;
@@ -359,12 +408,14 @@ int main()
     if(r == true)
     {
         gen(formula);
+        std::cout << "\n";
     }
     else
     {
         std::cout << "Fail\n";
-        std::copy(iter, end, std::ostream_iterator<char>(std::cout));
     }
+
+    std::copy(iter, end, std::ostream_iterator<char>(std::cout));
 
     return 0;
 }
