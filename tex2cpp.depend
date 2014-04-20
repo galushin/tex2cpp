@@ -1,13 +1,18 @@
 # depslib dependency file v1.0
-1396159495 source:c:\c++\tex2cpp\main.cpp
-	<boost/spirit/include/qi.hpp>
-	<boost/fusion/include/adapt_struct.hpp>
-	<fstream>
+1397990398 source:c:\c++\tex2cpp\main.cpp
 	<iostream>
+	<fstream>
+	"tex2cpp.h"
 
 1397294311 source:c:\projects\tex2cpp\tex2cpp\main.cpp
 	<boost/spirit/include/qi.hpp>
 	<boost/fusion/include/adapt_struct.hpp>
 	<fstream>
 	<iostream>
+
+1397990180 c:\c++\tex2cpp\tex2cpp.h
+
+1397990429 source:c:\c++\tex2cpp\tex2cpp.cpp
+	<boost/spirit/include/qi.hpp>
+	<boost/fusion/include/adapt_struct.hpp>
 

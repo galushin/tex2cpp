@@ -35,6 +35,8 @@
 		<Unit filename="main.cpp" />
 		<Unit filename="notes.txt" />
 		<Unit filename="source.txt" />
+		<Unit filename="tex2cpp.cpp" />
+		<Unit filename="tex2cpp.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />
