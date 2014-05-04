@@ -11,6 +11,7 @@ namespace ast
     struct fraction;
     struct conjugated;
     struct absolute;
+    struct std_function;
 
     struct expression_in_parens;
 
@@ -23,6 +24,7 @@ namespace ast
           , boost::recursive_wrapper<fraction>
           , boost::recursive_wrapper<conjugated>
           , boost::recursive_wrapper<absolute>
+          , boost::recursive_wrapper<std_function>
         >
     operand;
 
@@ -76,6 +78,12 @@ namespace ast
     {
         expression arg;
     };
+
+    struct std_function
+    {
+        std::string name;
+       operand arg;
+    };
 }
 // namespace ast
 
@@ -111,6 +119,7 @@ BOOST_FUSION_ADAPT_STRUCT(ast::fraction,
 
 BOOST_FUSION_ADAPT_STRUCT(ast::conjugated, (ast::expression, arg))
 BOOST_FUSION_ADAPT_STRUCT(ast::absolute, (ast::expression, arg))
+BOOST_FUSION_ADAPT_STRUCT(ast::std_function,(std::string, name)(ast::operand, arg))
 
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
@@ -122,12 +131,16 @@ struct calculator
     calculator()
      : calculator::base_type(formula)
     {
-        formula = id >> "(" >> (id % ',') >> ")" >> "=" >> expression;
-        id = +qi::alpha | ('\\' > + qi::alpha);
-
         using qi::char_;
+        using qi::string;
         using qi::lit;
         using qi::uint_;
+
+        formula
+            = id >> (lit("(") | "\\left(") >> (id % ',') >> (lit(")") | "\\right)") >> "=" >> expression;
+
+
+        id = (qi::alpha >> *qi::alnum) | ('\\' >> id);
 
         expression =
                 term
@@ -148,6 +161,7 @@ struct calculator
 
             factor =
                     uint_
+                |   std_function
                 |   fraction
                 |   conj
                 |   absolute
@@ -157,10 +171,15 @@ struct calculator
                 |   id
                 ;
 
+            std_function
+                = (string ("\\sin") > factor)
+                | (string ("\\cos") > factor);
+
             expression_in_parens
                 = ('(' > expression > ')')
                 | ('{' > expression > '}')
-                | ("\\left(" > expression > "\\right)");
+                | ("\\left(" > expression > "\\right)")
+                | ("\\left{" > expression > "\\right}");
 
             fraction = ("\\frac{" > expression > "}{" > expression > "}");
             conj     = ("\\bar{") > expression > "}";
@@ -178,6 +197,7 @@ struct calculator
     qi::rule<Iterator, ast::fraction(), ascii::space_type> fraction;
     qi::rule<Iterator, ast::conjugated(), ascii::space_type> conj;
     qi::rule<Iterator, ast::absolute(), ascii::space_type> absolute;
+    qi::rule<Iterator, ast::std_function(), ascii::space_type> std_function;
 };
 
 template <class F>
@@ -290,6 +310,11 @@ public:
     cpp_generator & operator()(ast::absolute const & x)
     {
         return (*this)("abs(")(x.arg)(")");
+    }
+
+    cpp_generator & operator()(ast::std_function const & x)
+    {
+        return (*this)(x.name.substr(1))("(")(x.arg)(")");
     }
 
     template <class T>
